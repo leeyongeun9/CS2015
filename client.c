@@ -66,6 +66,22 @@ int main (int argc, char **argv) {
 	} 
 	while(1){
 		fgets(bufIn, 16, stdin);
+		bufIn[strlen(bufIn)-1] = '0';
+		if (bufIn[0] == 'C'){
+			if( connectRecursive(clientSocket, hostName, portNumber, 0) == -1 ) {
+				printf("failed to connect for %d times, shut down\n", CONNECT_TRY_LIMIT);
+				exit(1);
+			} else {
+				printf("Connection established\n");
+			}
+		} else if (bufIn[0] == 'R') {
+		} else if (bufIn[0] == 'F') {
+		} else {
+			printf("undefined input\n");
+			printf("\t C : Connect to the server\n");
+			printf("\t R n : Request to server to transmit file number n\n");
+			printf("\t F: Finish the connection to the server\n");
+		}
 			
 	}	
 	// Set Handler for timers
