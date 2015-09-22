@@ -42,6 +42,7 @@ int main (int argc, char **argv) {
 	int clientSocket, i;
 	int portNumber, windowSize, ACKDelay;
 	char *hostName;
+	char bufIn[16];
 	
 	// Check arguments 
 	if (argc != 7) {
@@ -54,8 +55,8 @@ int main (int argc, char **argv) {
 	hostName = argv[1];
 	portNumber = atoi(argv[2]);
 	for (i = 3 ; i < 5 ; i = i + 2 ) {
-		if (argv[i] == "-w") windowSize = atoi(argv[i+1]);
-		if (argv[i] == "-d") ACKDelay = atoi(argv[i+1]);
+		if (strncmp(argv[i], "-w", 2)) windowSize = atoi(argv[i+1]);
+		if (strncmp(argv[i], "-d", 2)) ACKDelay = atoi(argv[i+1]);
 	}
 	clientSocket = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -64,6 +65,8 @@ int main (int argc, char **argv) {
 		exit(1);
 	} 
 	while(1){
+		fgets(bufIn, 16, stdin);
+			
 	}	
 	// Set Handler for timers
 	struct sigaction sigact;
