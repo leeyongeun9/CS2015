@@ -62,7 +62,7 @@ int main (int argc, char **argv) {
 
 	while(1){
 		fgets(bufIn, 16, stdin);
-		bufIn[strlen(bufIn)-1] = '0';
+		//bufIn[strlen(bufIn)-1] = '0';
 		if (bufIn[0] == 'C'){
 			if( connectRecursive(clientSocket, hostName, portNumber, 0) == -1 ) {
 				printf("failed to connect for %d times, shut down\n", CONNECT_TRY_LIMIT);
