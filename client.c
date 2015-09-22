@@ -73,7 +73,7 @@ int main (int argc, char **argv) {
 		} else if (bufIn[0] == 'R') {
 		} else if (bufIn[0] == 'F') {
 		} else {
-			printf("undefined input\n");
+			printf("\tundefined input : %s\n", bufIn);
 			printf("\t C : Connect to the server\n");
 			printf("\t R n : Request to server to transmit file number n\n");
 			printf("\t F: Finish the connection to the server\n");
