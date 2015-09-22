@@ -30,7 +30,7 @@ int connectRecursive(int socket, char* hostName, int port, int numberofTry){
 	
 	state = connect(socket, (struct sockaddr *)&clientaddr, socketLen);
 	if (state == -1) {
-		perror("connect error");
+		perror("connect error ");
 		if (numberofTry < CONNECT_TRY_LIMIT) state = connectRecursive(socket, hostName, port+1, numberofTry+1);
 	} else {
 		printf("connecting success\n");
@@ -60,10 +60,6 @@ int main (int argc, char **argv) {
 	}
 	clientSocket = socket(AF_INET, SOCK_STREAM, 0);
 
-	if ( connectRecursive(clientSocket, hostName, portNumber, 0) == -1 ) {
-		printf("failed to connect for %d times, shut down\n", CONNECT_TRY_LIMIT);
-		exit(1);
-	} 
 	while(1){
 		fgets(bufIn, 16, stdin);
 		bufIn[strlen(bufIn)-1] = '0';

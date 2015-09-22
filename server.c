@@ -44,7 +44,7 @@ int main (int argc, char **argv) {
 		portNumber = atoi(argv[1]);
 	}
 	if ( (serverSocket = socket(AF_INET, SOCK_STREAM, 0)) < 0 ) {
-		perror("socket error");
+		perror("socket error ");
 		exit(1);	
 	}
 
@@ -54,7 +54,7 @@ int main (int argc, char **argv) {
 	} 
 	
 	if ( listen(serverSocket, 0) == -1 ) {
-		perror("listen error");
+		perror("listen error ");
 		exit(1);
 	}
 	printf("waiting for connection...\n");
