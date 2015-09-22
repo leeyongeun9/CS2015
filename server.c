@@ -30,8 +30,12 @@ int bindRecursive(int socketId, int portNumber, int numberofTry){
 
 int main (int argc, char **argv) {
 
-	int serverSocket;
+	int serverSocket, clientSocket;
 	int portNumber;
+	socklen_t clientLen;
+	struct sockaddr_in clientaddr;
+
+	clientLen = sizeof(clientaddr);	
 	// Check arguments
 	if (argc != 2) {
 		printf("Usage: %s <port>\n", argv[0]);
@@ -39,18 +43,22 @@ int main (int argc, char **argv) {
 	} else {
 		portNumber = atoi(argv[1]);
 	}
-
 	if ( (serverSocket = socket(AF_INET, SOCK_STREAM, 0)) < 0 ) {
-		perror("socket error : ");
-		printf("Socket Error\n");
-		exit(0);	
+		perror("socket error");
+		exit(1);	
 	}
+
 	if ( bindRecursive(serverSocket, portNumber, 0) == -1 ){
 		printf("failed to bind for %d times, shut down\n", BINDING_TRY_LIMIT);
-		exit(0);
+		exit(1);
 	} 
-	// TODO: Create sockets for a server and a client
-	//      bind, listen, and accept
+	
+	if ( listen(serverSocket, 0) == -1 ) {
+		perror("listen error");
+		exit(1);
+	}
+	printf("waiting for connection...\n");
+	clientSocket = accept(serverSocket, (struct sockaddr *) &clientaddr, &clientLen);
 
 	// TODO: Read a specified file and send it to a client.
 	//      Send as many packets as window size (speified by

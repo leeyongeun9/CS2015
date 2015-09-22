@@ -9,50 +9,91 @@
 #include <signal.h>
 
 #define BUFFER_SIZE 1000    // same as packet size
+#define CONNECT_TRY_LIMIT 10
 
 void handler();
 timer_t set_timer(long long);
 
+int connectRecursive(int socket, char* hostName, int port, int numberofTry){
+	struct sockaddr_in clientaddr;
+	int socketLen;
+	int state;
+
+	clientaddr.sin_family = AF_INET;
+	clientaddr.sin_addr.s_addr = inet_addr(hostName);
+	clientaddr.sin_port = htons(port);
+
+	socketLen = sizeof(clientaddr);
+	
+	printf("------port number : %d------\n", port);
+        printf("trying to connect...\n");
+	
+	state = connect(socket, (struct sockaddr *)&clientaddr, socketLen);
+	if (state == -1) {
+		perror("connect error");
+		if (numberofTry < CONNECT_TRY_LIMIT) state = connectRecursive(socket, hostName, port+1, numberofTry+1);
+	} else {
+		printf("connecting success\n");
+	}
+	return state;
+}
 int main (int argc, char **argv) {
    
+	int clientSocket, i;
+	int portNumber, windowSize, ACKDelay;
+	char *hostName;
+	
 	// Check arguments 
-    if (argc != 7) {
-        printf("Usage: %s <hostname> <port> [Arguments]\n", argv[0]);
-        printf("\tMandatory Arguments:\n");
-        printf("\t\t-w\t\tsize of the window used at server\n");
-        printf("\t\t-d\t\tACK delay in msec");
-        exit(1);
-    }
+	if (argc != 7) {
+		printf("Usage: %s <hostname> <port> [Arguments]\n", argv[0]);
+		printf("\tMandatory Arguments:\n");
+		printf("\t\t-w\t\tsize of the window used at server\n");
+		printf("\t\t-d\t\tACK delay in msec");
+		exit(1);
+	}
+	hostName = argv[1];
+	portNumber = atoi(argv[2]);
+	for (i = 3 ; i < 5 ; i = i + 2 ) {
+		if (argv[i] == "-w") windowSize = atoi(argv[i+1]);
+		if (argv[i] == "-d") ACKDelay = atoi(argv[i+1]);
+	}
+	clientSocket = socket(AF_INET, SOCK_STREAM, 0);
 
-    // Set Handler for timers
-    struct sigaction sigact;
-    sigemptyset(&sigact.sa_mask);
-    sigaddset(&sigact.sa_mask, SIGALRM);
-    sigact.sa_handler = &handler;
-    sigaction(SIGALRM, &sigact, NULL);
+	if ( connectRecursive(clientSocket, hostName, portNumber, 0) == -1 ) {
+		printf("failed to connect for %d times, shut down\n", CONNECT_TRY_LIMIT);
+		exit(1);
+	} 
+	while(1){
+	}	
+	// Set Handler for timers
+	struct sigaction sigact;
+	sigemptyset(&sigact.sa_mask);
+	sigaddset(&sigact.sa_mask, SIGALRM);
+	sigact.sa_handler = &handler;
+	sigaction(SIGALRM, &sigact, NULL);
 
-    // Timer example
-    set_timer(1000);
-    set_timer(2000);
-    set_timer(3000);
-    set_timer(4000);
+	set_timer(10000);
 
-    while(1){}
+	set_timer(1000);
+	// Timer example
 
-    // TODO: Create a socket for a client
-    //      connect to a server
-    //      set ACK delay
-    //      set server window size
-    //      specify a file to receive
-    //      finish the connection
 
-    // TODO: Receive a packet from server
-    //      set timer for ACK delay
-    //      send ACK packet back to server (usisng handler())
-    //      You may use "ack_packet"
+	while(1){}
 
-    // TODO: Close the socket
-    return 0;
+	// TODO: Create a socket for a client
+	//      connect to a server
+	//      set ACK delay
+	//      set server window size
+	//      specify a file to receive
+	//      finish the connection
+
+	// TODO: Receive a packet from server
+	//      set timer for ACK delay
+	//      send ACK packet back to server (usisng handler())
+	//      You may use "ack_packet"
+
+	// TODO: Close the socket
+	return 0;
 }
 
 /*
