@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <time.h>
+#include <errno.h>
 #include <signal.h>
 
 #define BUFFER_SIZE 1000    // same as packet size
@@ -18,7 +19,17 @@ int connectRecursive(int socket, char* hostName, int port, int numberofTry){
 	struct sockaddr_in clientaddr;
 	int socketLen;
 	int state;
+	char buf[255];
+	const char identifyQuestion[19] = "Are you my server?";
+	const char identifyAnswer[14] = "Yes my friend";
 
+	
+	struct sigaction sigact;
+	sigemptyset(&sigact.sa_mask);
+	sigaddset(&sigact.sa_mask, SIGALRM);
+	sigact.sa_handler = &handler;
+	sigact.sa_flags |= SA_INTERRUPT;
+	sigaction(SIGALRM, &sigact, NULL);
 	clientaddr.sin_family = AF_INET;
 	clientaddr.sin_addr.s_addr = inet_addr(hostName);
 	clientaddr.sin_port = htons(port);
@@ -29,11 +40,22 @@ int connectRecursive(int socket, char* hostName, int port, int numberofTry){
         printf("trying to connect...\n");
 	
 	state = connect(socket, (struct sockaddr *)&clientaddr, socketLen);
-	if (state == -1) {
+	if (state == 0) {
+		send(socket,identifyQuestion, strlen(identifyQuestion), 0);
+		set_timer(500);
+		recv(socket, buf, 255, 0);
+		if (errno == EINTR) {
+			printf("this is not my server.\n");
+			if (numberofTry < CONNECT_TRY_LIMIT) state = connectRecursive(socket, hostName, port+1, numberofTry+1);
+		}
+		else if ( strncmp(buf, identifyAnswer, strlen(identifyAnswer)) == 0 ) {
+			printf("Connection established\n");
+		}
+			
+		
+	} else if (state == -1) {
 		perror("connect error ");
 		if (numberofTry < CONNECT_TRY_LIMIT) state = connectRecursive(socket, hostName, port+1, numberofTry+1);
-	} else {
-		printf("connecting success\n");
 	}
 	return state;
 }
@@ -67,16 +89,16 @@ int main (int argc, char **argv) {
 			if( connectRecursive(clientSocket, hostName, portNumber, 0) == -1 ) {
 				printf("failed to connect for %d times, shut down\n", CONNECT_TRY_LIMIT);
 				exit(1);
-			} else {
-				printf("Connection established\n");
 			}
 		} else if (bufIn[0] == 'R') {
+			
 		} else if (bufIn[0] == 'F') {
 		} else {
 			printf("\tundefined input : %s\n", bufIn);
-			printf("\t C : Connect to the server\n");
-			printf("\t R n : Request to server to transmit file number n\n");
-			printf("\t F: Finish the connection to the server\n");
+			printf("\tList of inputs\n");
+			printf("\tC : Connect to the server\n");
+			printf("\tR n : Request to server to transmit file number n\n");
+			printf("\tF: Finish the connection to the server\n");
 		}
 			
 	}	
@@ -87,9 +109,6 @@ int main (int argc, char **argv) {
 	sigact.sa_handler = &handler;
 	sigaction(SIGALRM, &sigact, NULL);
 
-	set_timer(10000);
-
-	set_timer(1000);
 	// Timer example
 
 

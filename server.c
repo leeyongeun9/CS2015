@@ -35,6 +35,9 @@ int main (int argc, char **argv) {
 	socklen_t clientLen;
 	struct sockaddr_in clientaddr;
 
+	char buf[255];
+	const char identifyQuestion[19] = "Are you my server?";
+	const char identifyAnswer[14] = "Yes my friend";
 	clientLen = sizeof(clientaddr);	
 	// Check arguments
 	if (argc != 2) {
@@ -59,6 +62,21 @@ int main (int argc, char **argv) {
 	}
 	printf("waiting for connection...\n");
 	clientSocket = accept(serverSocket, (struct sockaddr *) &clientaddr, &clientLen);
+	if (clientSocket == -1) {
+		perror("accept error ");
+		exit(1);
+	}
+	while(1){
+		memset(buf, '0', 255);
+		if( recv(clientSocket, buf, 255, 0) == -1 ) {
+			perror("can't recieve ");
+			close(clientSocket);
+			break;
+		}
+		if( strncmp(buf, identifyQuestion, strlen(identifyQuestion)) == 1) {
+			send(clientSocket, identifyAnswer, strlen(identifyAnswer), 0);	
+		}	
+	}
 
 	// TODO: Read a specified file and send it to a client.
 	//      Send as many packets as window size (speified by
