@@ -26,21 +26,54 @@ int bindRecursive(int socketId, int portNumber, int numberofTry){
 	return state; 
 }
 void sendFile(int socket, FILE *fl, int windowSize) {
-	char buffer[BUFFER_SIZE];
-	char ackbuffer[64];
+	myPacketBuffer *buf;
+	char buffer[BUFFER_SIZE+HEADER_SIZE];
+	char *pt;
+	ackPacket *ackbuf;
+	char ackbuffer[10];
+	int minSN = 0, maxSN = -1;
 	int diffSN = 0;
-
-	while(fgets(buffer, BUFFER_SIZE, fl) != '\0') {
-		if (diffSN < windowSize){
-			printf("the first character is : %c\n", buffer[0]);
-			diffSN ++;
-			send(socket, buffer, sizeof(buffer), 0);	
+	unsigned long i = 0;
+	unsigned long j = 0;
+	
+	pt = buf + HEADER_SIZE;	
+	while(fgets(buf->pack, BUFFER_SIZE, fl) != '\0') {
+		if (i > 40) break;
+		i ++;
+		pt = buf;
+		if (minSN + windowSize -1 > maxSN) {
+			buf->sn = maxSN;
+			buf->length = strlen(buf->pack);
+			int count = send(socket, (void *)buf, sizeof(buf), 0);
+			maxSN++;
 		} else {
-			int count = recv(socket, ackbuffer, 64, 0);
-			if ( count > 0 ) ackbuffer[count] = '\0';
-			if ( strncmp(ackbuffer, ACK, strlen(ackbuffer)) == 0 ) diffSN --;
+			void *temp;
+			int count = recv(socket, temp, sizeof(ackPacket), 0);
+			ackbuf = (ackPacket *) temp;
+			if ( strncmp(ackbuffer, ackbuf->msg, strlen(ackbuf->msg)) == 0 ) {
+				minSN = ackbuf->rn;
+			}
 		}
+		/* 
+		if (diffSN < windowSize){
+			//printf("the first character is : %c\n", buffer[0]);
+			diffSN ++;
+			int count = send(socket, buffer, sizeof(buffer), 0);	
+			j++;
+			printf("j : %d\n", j);
+		} else {
+			int count = recv(socket, ackbuffer, strlen(ACK), 0);
+			if ( count > 0 ) ackbuffer[count] = '\0';
+			if ( strncmp(ackbuffer, ACK, strlen(ackbuffer)) == 0 ) {
+				diffSN --;
+			//	printf("ACK : %s\n", ACK);
+			}
+		}*/
 	} 
+	buf->sn++;
+	buf->length = strlen(transferFinished);
+	strncpy(buf->pack, transferFinished, buf->length); 
+	send(socket, buf, sizeof(buf), 0);
 }
 
 int main (int argc, char **argv) {
@@ -115,6 +148,8 @@ int main (int argc, char **argv) {
 			sendFile(clientSocket, fl, windowSize);		
 		} 
 	}
+	close(clientSocket);
+	close(serverSocket);
 
 	// TODO: Read a specified file and send it to a client.
 	//      Send as many packets as window size (speified by
