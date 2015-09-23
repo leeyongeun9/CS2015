@@ -5,7 +5,16 @@
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <time.h>
+#include <signal.h>
 #include "constants.h"
+
+void handler();
+timer_t set_timer(long long);
+
+int minSN = 0, maxSN = -1;
+FILE *fl;
+
 int bindRecursive(int socketId, int portNumber, int numberofTry){
 	struct sockaddr_in bindaddr;
 	int state;
@@ -25,50 +34,44 @@ int bindRecursive(int socketId, int portNumber, int numberofTry){
 	}
 	return state; 
 }
-void sendFile(int socket, FILE *fl, int windowSize) {
+
+void sendFile(int socket, int windowSize) {
 	myPacketBuffer *buf;
-	char buffer[BUFFER_SIZE+HEADER_SIZE];
 	char *pt;
 	ackPacket *ackbuf;
-	char ackbuffer[10];
-	int minSN = 0, maxSN = -1;
-	int diffSN = 0;
-	unsigned long i = 0;
-	unsigned long j = 0;
+
+        struct sigaction sigact;
+
+        sigemptyset(&sigact.sa_mask);
+        sigaddset(&sigact.sa_mask, SIGALRM);
+        sigact.sa_handler = &handler;
+        sigaction(SIGALRM, &sigact, NULL);
 	
-	pt = buf + HEADER_SIZE;	
+	buf = malloc(sizeof(myPacketBuffer));
+	ackbuf = malloc(sizeof(ackPacket));
+
 	while(fgets(buf->pack, BUFFER_SIZE, fl) != '\0') {
-		if (i > 40) break;
-		i ++;
-		pt = buf;
+		printf("ready...\n");
 		if (minSN + windowSize -1 > maxSN) {
-			buf->sn = maxSN;
-			buf->length = strlen(buf->pack);
-			int count = send(socket, (void *)buf, sizeof(buf), 0);
 			maxSN++;
+			buf->sn = maxSN;
+			buf->length = sizeof(buf->pack);
+			int count = send(socket, (void *)buf, sizeof(*buf), 0);
+			printf("buf->sn : %d, buf->length : %d, count : %d\n", buf->sn, buf->length, count);
 		} else {
-			void *temp;
-			int count = recv(socket, temp, sizeof(ackPacket), 0);
-			ackbuf = (ackPacket *) temp;
-			if ( strncmp(ackbuffer, ackbuf->msg, strlen(ackbuf->msg)) == 0 ) {
+			printf("1\n");
+			set_timer(1000);
+			int count = recv(socket, ackbuf, sizeof(ackPacket), MSG_WAITALL);
+			if (count == -1) continue;
+			printf("ack->rn : %d, ack->msg : %s, count : %d\n", ackbuf->rn, ackbuf->msg, count);
+			if ( strncmp(ackbuf->msg, ACK, strlen(ACK)) == 0  && ackbuf->rn > minSN ) {
+				alarm(0);
+				printf("4\n");
 				minSN = ackbuf->rn;
+				printf("ok\n");
 			}
 		}
-		/* 
-		if (diffSN < windowSize){
-			//printf("the first character is : %c\n", buffer[0]);
-			diffSN ++;
-			int count = send(socket, buffer, sizeof(buffer), 0);	
-			j++;
-			printf("j : %d\n", j);
-		} else {
-			int count = recv(socket, ackbuffer, strlen(ACK), 0);
-			if ( count > 0 ) ackbuffer[count] = '\0';
-			if ( strncmp(ackbuffer, ACK, strlen(ackbuffer)) == 0 ) {
-				diffSN --;
-			//	printf("ACK : %s\n", ACK);
-			}
-		}*/
+		memset(buf, '0', sizeof(*buf));
 	} 
 	buf->sn++;
 	buf->length = strlen(transferFinished);
@@ -86,7 +89,6 @@ int main (int argc, char **argv) {
 	struct sockaddr_in clientaddr;
 
 	char buf[255];
-	FILE *fl;
 	clientLen = sizeof(clientaddr);	
 	// Check arguments
 	if (argc != 2) {
@@ -145,7 +147,7 @@ int main (int argc, char **argv) {
 			fl = fopen(fileDic, "r");
 
 			printf("file name is : %s\n", fileDic);
-			sendFile(clientSocket, fl, windowSize);		
+			sendFile(clientSocket, windowSize);		
 		} 
 	}
 	close(clientSocket);
@@ -165,4 +167,42 @@ int main (int argc, char **argv) {
 
 	// TODO: Close the sockets
 	return 0;
+}
+
+
+/*
+ * handler()
+ * Invoked by a timer.
+ * Send ACK to the server
+ */
+void handler() {
+	printf("maxSN is : %d, minSN is : %d\n", maxSN, minSN);
+	fl = fl - sizeof(myPacketBuffer) * (maxSN - minSN + 1);
+	maxSN = minSN;
+	printf("no problem\n");
+	maxSN = minSN;
+}
+
+
+
+/*
+ * set_timer()
+ * set timer in msec
+ */
+timer_t set_timer(long long time) {
+    struct itimerspec time_spec = {.it_interval = {.tv_sec=0,.tv_nsec=0},
+                                .it_value = {.tv_sec=0,.tv_nsec=0}};
+
+        int sec = time / 1000;
+        long n_sec = (time % 1000) * 1000;
+    time_spec.it_value.tv_sec = sec;
+    time_spec.it_value.tv_nsec = n_sec;
+
+    timer_t t_id;
+    if (timer_create(CLOCK_MONOTONIC, NULL, &t_id))
+        perror("timer_create");
+    if (timer_settime(t_id, 0, &time_spec, NULL))
+        perror("timer_settime");
+
+    return t_id;
 }
