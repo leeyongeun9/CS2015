@@ -13,6 +13,7 @@
 #define CONNECT_TRY_LIMIT 10
 
 void handler();
+void timeoutHandler();
 timer_t set_timer(long long);
 
 int connectRecursive(int socket, char* hostName, int port, int numberofTry){
@@ -25,11 +26,14 @@ int connectRecursive(int socket, char* hostName, int port, int numberofTry){
 
 	
 	struct sigaction sigact;
+
+	sigact.sa_handler = &timeoutHandler;
 	sigemptyset(&sigact.sa_mask);
-	sigaddset(&sigact.sa_mask, SIGALRM);
-	sigact.sa_handler = &handler;
+	sigact.sa_flags = 0;
 	sigact.sa_flags |= SA_INTERRUPT;
+
 	sigaction(SIGALRM, &sigact, NULL);
+
 	clientaddr.sin_family = AF_INET;
 	clientaddr.sin_addr.s_addr = inet_addr(hostName);
 	clientaddr.sin_port = htons(port);
@@ -42,7 +46,7 @@ int connectRecursive(int socket, char* hostName, int port, int numberofTry){
 	state = connect(socket, (struct sockaddr *)&clientaddr, socketLen);
 	if (state == 0) {
 		send(socket,identifyQuestion, strlen(identifyQuestion), 0);
-		set_timer(500);
+		alarm(1);
 		recv(socket, buf, 255, 0);
 		if (errno == EINTR) {
 			printf("this is not my server.\n");
@@ -138,6 +142,9 @@ int main (int argc, char **argv) {
 void handler() {
     printf("Hi\n");
 	// TODO: Send an ACK packet
+}
+void timeoutHandler(){
+	printf("timeout\n");
 }
 
 /*
