@@ -11,10 +11,10 @@ server: server.o
 client: client.o
 	$(CC) $^ -o $@ -lrt
 
-server.o: server.c
+server.o: server.c constants.h
 	$(CC) -c $(FLAGS) $(INC) $< -o $@ -lrt
 
-client.o: client.c
+client.o: client.c constants.h
 	$(CC) -c $(FLAGS) $(INC) $< -o $@ -lrt
 
 .PHONY: clean
