@@ -146,7 +146,7 @@ int main (int argc, char **argv) {
 					strcpy(pt, "data/");
 					pt += strlen(pt);
 
-					strcpy(pt, file[bufIn[i] - '1']);
+					strcpy(pt, fileName[bufIn[i] - '1']);
 					fp = fopen(fileDic, "w");
 
 					receivingFile(clientSocket, fp, atoi(windowSize));
