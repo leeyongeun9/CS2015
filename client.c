@@ -9,16 +9,6 @@
 #include <errno.h>
 #include <signal.h>
 #include "constants.h"
-#define BUFFER_SIZE 1000    // same as packet size
-#define CONNECT_TRY_LIMIT 10
-
-
-const char identifyQuestion[19] = "Are you my server?";
-const char identifyAnswer[14] = "Yes my friend";
-const char quitStr[5] = "quit";
-const char file1 = "TransferMe10.mp4";
-const char file2 = "TransferMe10.mp4";
-const char file3 = "TransferMe10.mp4";
 
 void handler();
 void timeoutHandler();
@@ -82,7 +72,8 @@ void receivingFile(int socket, FILE *file, int windowSize){
 int main (int argc, char **argv) {
    
 	int clientSocket, i;
-	int portNumber, windowSize, ACKDelay;
+	int portNumber, ACKDelay;
+	char windowSizeInteger[4];
 	char *hostName;
 	char bufIn[16];
 	char message[10];
@@ -107,9 +98,10 @@ int main (int argc, char **argv) {
 	hostName = argv[1];
 	portNumber = atoi(argv[2]);
 	for (i = 3 ; i < 5 ; i = i + 2 ) {
-		if (strncmp(argv[i], "-w", 2)) windowSize = atoi(argv[i+1]);
+		if (strncmp(argv[i], "-w", 2)) *((int *)windowSizeInteger) = atoi(argv[i+1]);
 		if (strncmp(argv[i], "-d", 2)) ACKDelay = atoi(argv[i+1]);
 	}
+	printf("windowSize is : %d\n", *((int*)windowSizeInteger));
 
 	printf("\n");
 	printf("List of inputs\n");
@@ -127,6 +119,12 @@ int main (int argc, char **argv) {
 				printf("failed to connect for %d times, shut down\n", CONNECT_TRY_LIMIT);
 				exit(1);
 			}
+			char *buf = malloc(sizeof(windowSizeInteger));
+			buf[0] = 'C';
+			buf[1] = windowSizeInteger;
+			send(clientSocket, buf, 1+sizeof(windowSizeInteger), 0);
+			free(buf);
+
 		} else if (bufIn[0] == 'R') {
 			int sending = 0;
 			for ( i = 1 ; i < strlen(bufIn) ; i ++ ) {
@@ -137,7 +135,7 @@ int main (int argc, char **argv) {
 					message[2] = '\0';
 					sending = send(clientSocket, message, strlen(message), 0);
 					fp = fopen(file1, "w");
-					recevingFile(clientSocket, fp, windowSize);
+					receivingFile(clientSocket, fp, *((int *)windowSizeInteger));
 
 					break;
 				}
