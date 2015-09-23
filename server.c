@@ -36,8 +36,8 @@ int main (int argc, char **argv) {
 	struct sockaddr_in clientaddr;
 
 	char buf[255];
-	const char identifyQuestion[19] = "Are you my server?";
-	const char identifyAnswer[14] = "Yes my friend";
+	const char identifyQuestion[18] = "Are you my server?";
+	const char identifyAnswer[13] = "Yes my friend";
 	clientLen = sizeof(clientaddr);	
 	// Check arguments
 	if (argc != 2) {
