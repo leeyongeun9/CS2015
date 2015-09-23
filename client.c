@@ -47,7 +47,8 @@ int connectRecursive(int socket, char* hostName, int port, int numberofTry){
 	if (state == 0) {
 		send(socket,identifyQuestion, strlen(identifyQuestion), 0);
 		alarm(1);
-		recv(socket, buf, 255, 0);
+		int count = recv(socket, buf, 255, 0);
+		buf[count-1] = '\0';
 		if (errno == EINTR) {
 			printf("this is not my server.\n");
 			close(socket);

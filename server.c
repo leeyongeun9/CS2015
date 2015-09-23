@@ -32,6 +32,7 @@ int main (int argc, char **argv) {
 
 	int serverSocket, clientSocket;
 	int portNumber;
+	int count;
 	socklen_t clientLen;
 	struct sockaddr_in clientaddr;
 
@@ -68,11 +69,12 @@ int main (int argc, char **argv) {
 	}
 	while(1){
 		memset(buf, '0', 255);
-		if( recv(clientSocket, buf, 255, 0) < 0 ) {
+		if( count = recv(clientSocket, buf, 255, 0) < 0 ) {
 			perror("can't recieve ");
 			close(clientSocket);
 			break;
 		} else {
+			buf[count-1] = '\0';
 			//printf("received data is : %s\n", buf);
 		}
 		if( strncmp(buf, identifyQuestion, strlen(identifyQuestion) - 1) == 1) {
