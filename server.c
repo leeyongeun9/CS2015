@@ -27,10 +27,19 @@ int bindRecursive(int socketId, int portNumber, int numberofTry){
 }
 void sendFile(int socket, FILE *fl, int windowSize) {
 	char buffer[BUFFER_SIZE];
+	char ackbuffer[64];
 	int diffSN = 0;
 
 	while(fgets(buffer, BUFFER_SIZE, fl) != '\0') {
-		send(socket, buffer, sizeof(buffer), 0);	
+		if (diffSN < windowSize){
+			printf("the first character is : %c\n", buffer[0]);
+			diffSN ++;
+			send(socket, buffer, sizeof(buffer), 0);	
+		} else {
+			int count = recv(socket, ackbuffer, 64, 0);
+			if ( count > 0 ) ackbuffer[count] = '\0';
+			if ( strncmp(ackbuffer, ACK, strlen(ackbuffer)) == 0 ) diffSN --;
+		}
 	} 
 }
 
@@ -92,8 +101,17 @@ int main (int argc, char **argv) {
 			printf("Connection terminated\n");
 			break;
 		} else if ( buf[0] == 'R' ) {
-			printf("file name is : %s\n", fileName[buf[1]-'1']);
-			fl = fopen(fileName[buf[1]-'1'], "r");
+			
+			char fileDic[30];
+			char *pt = fileDic;
+
+			strcpy(pt, "data/");
+			pt += strlen(pt);
+
+			strcpy(pt, fileName[buf[1] - '1']);
+			fl = fopen(fileDic, "r");
+
+			printf("file name is : %s\n", fileDic);
 			sendFile(clientSocket, fl, windowSize);		
 		} 
 	}
