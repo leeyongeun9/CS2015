@@ -5,9 +5,7 @@
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-
-#define BUFFER_SIZE	1000 	// same as packet size
-#define BINDING_TRY_LIMIT	10
+#include "constants.h"
 int bindRecursive(int socketId, int portNumber, int numberofTry){
 	struct sockaddr_in bindaddr;
 	int state;
@@ -37,8 +35,6 @@ int main (int argc, char **argv) {
 	struct sockaddr_in clientaddr;
 
 	char buf[255];
-	const char identifyQuestion[19] = "Are you my server?";
-	const char identifyAnswer[14] = "Yes my friend";
 	clientLen = sizeof(clientaddr);	
 	// Check arguments
 	if (argc != 2) {
@@ -75,10 +71,9 @@ int main (int argc, char **argv) {
 			break;
 		} else {
 			buf[count-1] = '\0';
-			//printf("received data is : %s\n", buf);
 		}
-		if( strncmp(buf, identifyQuestion, strlen(identifyQuestion) - 1) == 1) {
-			printf("client is right, buf : %s\n", buf);
+		if( strncmp(buf, identifyQuestion, strlen(identifyQuestion) ) == 0) {
+			printf("client is connected\n");
 			send(clientSocket, identifyAnswer, strlen(identifyAnswer), 0);	
 		}	
 	}
