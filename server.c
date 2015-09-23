@@ -26,7 +26,12 @@ int bindRecursive(int socketId, int portNumber, int numberofTry){
 	return state; 
 }
 void sendFile(int socket, FILE *fl, int windowSize) {
+	char buffer[BUFFER_SIZE];
+	int diffSN = 0;
 
+	while(fgets(buffer, BUFFER_SIZE, fl) != '\0') {
+		send(socket, buffer, sizeof(buffer), 0);	
+	} 
 }
 
 int main (int argc, char **argv) {
