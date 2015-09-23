@@ -25,16 +25,21 @@ int bindRecursive(int socketId, int portNumber, int numberofTry){
 	}
 	return state; 
 }
+void sendFile(int socket, FILE *fl, int windowSize) {
+
+}
 
 int main (int argc, char **argv) {
 
 	int serverSocket, clientSocket;
 	int portNumber;
 	int count;
+	int windowSize;
 	socklen_t clientLen;
 	struct sockaddr_in clientaddr;
 
 	char buf[255];
+	FILE *fl;
 	clientLen = sizeof(clientaddr);	
 	// Check arguments
 	if (argc != 2) {
@@ -65,17 +70,27 @@ int main (int argc, char **argv) {
 	}
 	while(1){
 		memset(buf, '0', 255);
-		if( count = recv(clientSocket, buf, 255, 0) < 0 ) {
+		count = recv(clientSocket, buf, 255, 0);
+		if (count == -1) {
 			perror("can't recieve ");
 			close(clientSocket);
 			break;
-		} else {
-			buf[count-1] = '\0';
-		}
+		} 
+		buf[count] = '\0';
 		if( strncmp(buf, identifyQuestion, strlen(identifyQuestion) ) == 0) {
 			printf("client is connected\n");
 			send(clientSocket, identifyAnswer, strlen(identifyAnswer), 0);	
-		}	
+		} else if ( buf[0] == 'C' ) {
+			char *integer = buf + 1;
+			windowSize = atoi(integer);
+		} else if ( strncmp(buf, quitStr, strlen(quitStr)) == 0 ) {
+			printf("Connection terminated\n");
+			break;
+		} else if ( buf[0] == 'R' ) {
+			printf("file name is : %s\n", fileName[buf[1]-'1']);
+			fl = fopen(fileName[buf[1]-'1'], "r");
+			sendFile(clientSocket, fl, windowSize);		
+		} 
 	}
 
 	// TODO: Read a specified file and send it to a client.
