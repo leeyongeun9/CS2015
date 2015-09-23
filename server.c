@@ -25,6 +25,9 @@ int bindRecursive(int socketId, int portNumber, int numberofTry){
 	}
 	return state; 
 }
+void sendFile(int socket, FILE *fl, int windowSize) {
+
+}
 
 int main (int argc, char **argv) {
 
@@ -86,7 +89,7 @@ int main (int argc, char **argv) {
 		} else if ( buf[0] == 'R' ) {
 			printf("file name is : %s\n", fileName[buf[1]-'1']);
 			fl = fopen(fileName[buf[1]-'1'], "r");
-				
+			sendFile(clientSocket, fl, windowSize);		
 		} 
 	}
 
