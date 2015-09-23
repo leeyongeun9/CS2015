@@ -1,5 +1,6 @@
 
 #define BUFFER_SIZE 		1000    // same as packet size
+#define HEADER_SIZE		8	
 #define PORT_CHANGE_LIMIT	10
 #define CONNECT_TRY_LIMIT 	PORT_CHANGE_LIMIT
 #define BINDING_TRY_LIMIT       PORT_CHANGE_LIMIT
@@ -18,3 +19,15 @@ const char fileName[3][20] = {
 	"TransferMe20.mp4",
 	"TransferMe30.mp4"
 };
+
+typedef struct myPacket {
+	unsigned long sn;
+	unsigned long length;
+	char pack[BUFFER_SIZE];
+} myPacketBuffer;
+
+typedef struct ackp {
+	unsigned long rn;
+	unsigned long length;
+	char msg[10];
+}ackPacket;
