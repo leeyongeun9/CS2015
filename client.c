@@ -46,8 +46,6 @@ int connectRecursive(int socket, char* hostName, int port, int numberofTry){
 		int count; 
 		printf("waiting for server's response...\n");
 		if( (count = recv(socket, buf, 255, 0)) <= 0 ){
-			buf[count-1] = '\0';
-			printf("server's response : &s\n", buf);
 			if (errno == EINTR) {
 				printf("this is not my server.\n");
 				close(socket);
@@ -73,7 +71,7 @@ int main (int argc, char **argv) {
    
 	int clientSocket, i;
 	int portNumber, ACKDelay;
-	char windowSizeInteger[4];
+	char *windowSize;
 	char *hostName;
 	char bufIn[16];
 	char message[10];
@@ -97,17 +95,22 @@ int main (int argc, char **argv) {
 	}
 	hostName = argv[1];
 	portNumber = atoi(argv[2]);
-	for (i = 3 ; i < 5 ; i = i + 2 ) {
-		if (strncmp(argv[i], "-w", 2)) *((int *)windowSizeInteger) = atoi(argv[i+1]);
-		if (strncmp(argv[i], "-d", 2)) ACKDelay = atoi(argv[i+1]);
+	for (i = 3 ; i < argc ; i++ ) {
+		if (strncmp(argv[i], "-w", 2) == 0){
+			printf("window size i = %d\n", i);
+			windowSize = argv[i+1];
+		}
+		if (strncmp(argv[i], "-d", 2) == 0) {
+			printf("ACKDelay i = %d\n", i);
+			ACKDelay = atoi(argv[i+1]);
+		}
 	}
-	printf("windowSize is : %d\n", *((int*)windowSizeInteger));
-
 	printf("\n");
 	printf("List of inputs\n");
 	printf("\tC : Connect to the server\n");
 	printf("\tR n : Request to server to transmit file number n(n = 1, 2, 3)\n");
 	printf("\tF: Finish the connection to the server\n");
+	printf("\n");
 
 	while(1){
 		printf("Enter your command : ");
@@ -119,10 +122,12 @@ int main (int argc, char **argv) {
 				printf("failed to connect for %d times, shut down\n", CONNECT_TRY_LIMIT);
 				exit(1);
 			}
-			char *buf = malloc(sizeof(windowSizeInteger));
-			buf[0] = 'C';
-			buf[1] = windowSizeInteger;
-			send(clientSocket, buf, 1+sizeof(windowSizeInteger), 0);
+			char *buf = malloc(strlen(windowSize)+2);
+			char *step = buf;	
+			step[0] = 'C';
+			step ++;
+			memcpy(step, windowSize, strlen(windowSize) + 1);
+			send(clientSocket, buf, strlen(buf), 0);
 			free(buf);
 
 		} else if (bufIn[0] == 'R') {
@@ -134,9 +139,17 @@ int main (int argc, char **argv) {
 					message[1] = bufIn[i];
 					message[2] = '\0';
 					sending = send(clientSocket, message, strlen(message), 0);
-					fp = fopen(file1, "w");
-					receivingFile(clientSocket, fp, *((int *)windowSizeInteger));
 
+					char fileDic[30];
+					char *pt = fileDic;
+
+					strcpy(pt, "data/");
+					pt += strlen(pt);
+
+					strcpy(pt, file[bufIn[i] - '1']);
+					fp = fopen(fileDic, "w");
+
+					receivingFile(clientSocket, fp, atoi(windowSize));
 					break;
 				}
 			}
