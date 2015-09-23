@@ -1,6 +1,6 @@
 
 #define BUFFER_SIZE 		1000    // same as packet size
-#define HEADER_SIZE		8	
+#define HEADER_SIZE		16
 #define PORT_CHANGE_LIMIT	10
 #define CONNECT_TRY_LIMIT 	PORT_CHANGE_LIMIT
 #define BINDING_TRY_LIMIT       PORT_CHANGE_LIMIT
