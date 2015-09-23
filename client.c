@@ -21,8 +21,8 @@ int connectRecursive(int socket, char* hostName, int port, int numberofTry){
 	int socketLen;
 	int state;
 	char buf[255];
-	const char identifyQuestion[18] = "Are you my server?";
-	const char identifyAnswer[13] = "Yes my friend";
+	const char identifyQuestion[19] = "Are you my server?";
+	const char identifyAnswer[14] = "Yes my friend";
 
 	
 	struct sigaction sigact;
@@ -52,7 +52,7 @@ int connectRecursive(int socket, char* hostName, int port, int numberofTry){
 			printf("this is not my server.\n");
 			close(socket);
 			if (numberofTry < CONNECT_TRY_LIMIT) state = connectRecursive(socket, hostName, port+1, numberofTry+1);
-		} else if ( strncmp(buf, identifyAnswer, strlen(identifyAnswer)) == 0 ) {
+		} else if ( strncmp(buf, identifyAnswer, strlen(identifyAnswer) - 1) == 0 ) {
 			printf("Connection established\n");
 		}
 			

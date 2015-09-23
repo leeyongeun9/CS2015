@@ -36,8 +36,8 @@ int main (int argc, char **argv) {
 	struct sockaddr_in clientaddr;
 
 	char buf[255];
-	const char identifyQuestion[18] = "Are you my server?";
-	const char identifyAnswer[13] = "Yes my friend";
+	const char identifyQuestion[19] = "Are you my server?";
+	const char identifyAnswer[14] = "Yes my friend";
 	clientLen = sizeof(clientaddr);	
 	// Check arguments
 	if (argc != 2) {
@@ -68,12 +68,15 @@ int main (int argc, char **argv) {
 	}
 	while(1){
 		memset(buf, '0', 255);
-		if( recv(clientSocket, buf, 255, 0) == -1 ) {
+		if( recv(clientSocket, buf, 255, 0) < 0 ) {
 			perror("can't recieve ");
 			close(clientSocket);
 			break;
+		} else {
+			//printf("received data is : %s\n", buf);
 		}
-		if( strncmp(buf, identifyQuestion, strlen(identifyQuestion)) == 1) {
+		if( strncmp(buf, identifyQuestion, strlen(identifyQuestion) - 1) == 1) {
+			printf("client is right, buf : %s\n", buf);
 			send(clientSocket, identifyAnswer, strlen(identifyAnswer), 0);	
 		}	
 	}
