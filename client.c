@@ -8,9 +8,17 @@
 #include <time.h>
 #include <errno.h>
 #include <signal.h>
-
+#include "constants.h"
 #define BUFFER_SIZE 1000    // same as packet size
 #define CONNECT_TRY_LIMIT 10
+
+
+const char identifyQuestion[19] = "Are you my server?";
+const char identifyAnswer[14] = "Yes my friend";
+const char quitStr[5] = "quit";
+const char file1 = "TransferMe10.mp4";
+const char file2 = "TransferMe10.mp4";
+const char file3 = "TransferMe10.mp4";
 
 void handler();
 void timeoutHandler();
@@ -21,8 +29,6 @@ int connectRecursive(int socket, char* hostName, int port, int numberofTry){
 	int socketLen;
 	int state;
 	char buf[255];
-	const char identifyQuestion[19] = "Are you my server?";
-	const char identifyAnswer[14] = "Yes my friend";
 
 	
 	struct sigaction sigact;
@@ -46,14 +52,20 @@ int connectRecursive(int socket, char* hostName, int port, int numberofTry){
 	state = connect(socket, (struct sockaddr *)&clientaddr, socketLen);
 	if (state == 0) {
 		send(socket,identifyQuestion, strlen(identifyQuestion), 0);
-		alarm(1);
-		int count = recv(socket, buf, 255, 0);
-		buf[count-1] = '\0';
-		if (errno == EINTR) {
-			printf("this is not my server.\n");
-			close(socket);
-			if (numberofTry < CONNECT_TRY_LIMIT) state = connectRecursive(socket, hostName, port+1, numberofTry+1);
-		} else if ( strncmp(buf, identifyAnswer, strlen(identifyAnswer) - 1) == 0 ) {
+		alarm(3);
+		int count; 
+		printf("waiting for server's response...\n");
+		if( (count = recv(socket, buf, 255, 0)) <= 0 ){
+			buf[count-1] = '\0';
+			printf("server's response : &s\n", buf);
+			if (errno == EINTR) {
+				printf("this is not my server.\n");
+				close(socket);
+				if (numberofTry < CONNECT_TRY_LIMIT) state = connectRecursive(socket, hostName, port+1, numberofTry+1);
+			}
+		}
+		alarm(0);
+		if ( strncmp(buf, identifyAnswer, strlen(identifyAnswer)) == 0 ) {
 			printf("Connection established\n");
 		}
 			
@@ -64,13 +76,26 @@ int connectRecursive(int socket, char* hostName, int port, int numberofTry){
 	}
 	return state;
 }
+void receivingFile(int socket, FILE *file, int windowSize){
+
+}
 int main (int argc, char **argv) {
    
 	int clientSocket, i;
 	int portNumber, windowSize, ACKDelay;
 	char *hostName;
 	char bufIn[16];
+	char message[10];
+	FILE *fp;
 	
+	struct sigaction sigact;
+	sigemptyset(&sigact.sa_mask);
+	sigaddset(&sigact.sa_mask, SIGALRM);
+	sigact.sa_handler = &handler;
+	sigaction(SIGALRM, &sigact, NULL);
+	clientSocket = socket(AF_INET, SOCK_STREAM, 0);
+
+
 	// Check arguments 
 	if (argc != 7) {
 		printf("Usage: %s <hostname> <port> [Arguments]\n", argv[0]);
@@ -85,39 +110,55 @@ int main (int argc, char **argv) {
 		if (strncmp(argv[i], "-w", 2)) windowSize = atoi(argv[i+1]);
 		if (strncmp(argv[i], "-d", 2)) ACKDelay = atoi(argv[i+1]);
 	}
-	clientSocket = socket(AF_INET, SOCK_STREAM, 0);
+
+	printf("\n");
+	printf("List of inputs\n");
+	printf("\tC : Connect to the server\n");
+	printf("\tR n : Request to server to transmit file number n(n = 1, 2, 3)\n");
+	printf("\tF: Finish the connection to the server\n");
 
 	while(1){
+		printf("Enter your command : ");
+		memset(bufIn, '0', 16);
 		fgets(bufIn, 16, stdin);
-		//bufIn[strlen(bufIn)-1] = '0';
+		bufIn[strlen(bufIn)-1] = '\0';
 		if (bufIn[0] == 'C'){
 			if( connectRecursive(clientSocket, hostName, portNumber, 0) == -1 ) {
 				printf("failed to connect for %d times, shut down\n", CONNECT_TRY_LIMIT);
 				exit(1);
 			}
 		} else if (bufIn[0] == 'R') {
+			int sending = 0;
+			for ( i = 1 ; i < strlen(bufIn) ; i ++ ) {
+				if ( bufIn[i] >= '1' && bufIn[i] <= '3' ) {
+					memset(message, '0', 10);
+					message[0] = 'R';
+					message[1] = bufIn[i];
+					message[2] = '\0';
+					sending = send(clientSocket, message, strlen(message), 0);
+					fp = fopen(file1, "w");
+					recevingFile(clientSocket, fp, windowSize);
+
+					break;
+				}
+			}
+			if (sending != 2) printf("n can be only 1, 2 or 3\n"); 
 			
 		} else if (bufIn[0] == 'F') {
+			send(clientSocket, quitStr, strlen(quitStr), 0);
+			break;
 		} else {
 			printf("\tundefined input : %s\n", bufIn);
 			printf("\tList of inputs\n");
 			printf("\tC : Connect to the server\n");
-			printf("\tR n : Request to server to transmit file number n\n");
+			printf("\tR n : Request to server to transmit file number n(n = 1, 2, 3)\n");
 			printf("\tF: Finish the connection to the server\n");
 		}
 			
 	}	
 	// Set Handler for timers
-	struct sigaction sigact;
-	sigemptyset(&sigact.sa_mask);
-	sigaddset(&sigact.sa_mask, SIGALRM);
-	sigact.sa_handler = &handler;
-	sigaction(SIGALRM, &sigact, NULL);
 
 	// Timer example
-
-
-	while(1){}
 
 	// TODO: Create a socket for a client
 	//      connect to a server
