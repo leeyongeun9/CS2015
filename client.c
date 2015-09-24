@@ -16,6 +16,9 @@ timer_t set_timer(long long);
 
 int clientSocket;
 int acknum = 0;
+int timernum = 0;
+
+timer_t t_id[1000];
 
 int connectRecursive(int socket, char* hostName, int port, int numberofTry){
 	struct sockaddr_in clientaddr;
@@ -50,7 +53,6 @@ int connectRecursive(int socket, char* hostName, int port, int numberofTry){
 		if( (count = recv(socket, buf, 255, 0)) <= 0 ){
 			if (errno == EINTR) {
 				printf("\tthis is not my server.\n");
-				close(socket);
 				if (numberofTry < CONNECT_TRY_LIMIT) state = connectRecursive(socket, hostName, port+1, numberofTry+1);
 			}
 		}
@@ -69,69 +71,62 @@ int connectRecursive(int socket, char* hostName, int port, int numberofTry){
 }
 void receivingFile(int socket, FILE *file, int delay){
 	char buffer[BUFFER_SIZE];
-	clock_t startTime, endTime;
+	struct timeval startTime, endTime;
 	int isStarted = 0;
 	int kbits = 0;
 	int lastbits = 0;
-
 
 	struct sigaction sigact;
 
 	sigemptyset(&sigact.sa_mask);
 	sigaddset(&sigact.sa_mask, SIGALRM);
 	sigact.sa_handler = &handler;
-	sigact.sa_flags = 0;
- 	sigact.sa_flags |= SA_INTERRUPT;
+	sigact.sa_flags = SA_RESTART;
 	sigaction(SIGALRM, &sigact, NULL);
 
-	int i = 0;
+
 	while (1) {
-		i ++;
-		//printf("ready to recieve\n");
-		int count = recv(socket, buffer, BUFFER_SIZE, MSG_WAITALL);
-//		printf("first is : %c\n", buffer[0]);
+		int count = recv(socket, buffer, BUFFER_SIZE, 0);
 		if (isStarted==0){
-			startTime = clock();
+			gettimeofday(&startTime, NULL);
 			isStarted = 1;
 		}
 
-		if (count == -1) {
-			if (errno == EINTR) {
-				continue;
-			}
-		} 
-		/*if (errno == EINTR) {
-			char *pt = buffer[count];
-			int last = recv(socket, pt, BUFFER_SIZE-count, 0);
-			printf ("count is : %d, last is : %d\n", count, last);
-			count = count + last;
-		}*/
+		if (count <= 0) continue;
 
 		if (count < BUFFER_SIZE) {
 			printf("count is : %d\n", count);
-			printf("errno is : %d\n", errno);
 			buffer[count] = '\0';
 			if (strncmp(buffer, transferFinished, strlen(transferFinished)) == 0) {
+				printf("get last msg\n");
 				usleep(delay * 1000);
-				endTime = clock();
+				gettimeofday(&endTime, NULL);
 				break;		
 			}
 			lastbits += count;
 		} else kbits ++;
 
 		if (kbits % 8000 == 0) printf("%dMB transfered\n", kbits / 8000);
-
+		
 		fputs(buffer, file);
-		set_timer(delay);
-//		printf("set timer\n");
-//		printf("i : %d\n", i);
+		t_id[timernum] = set_timer(delay);
+		if (timernum < 999) timernum++;
+		else timernum = 0;
+		if(count < BUFFER_SIZE) {
+			printf("after/ count : %d\n", count);
+			printf("after/ timenum : %d\n", timernum);
+		}
 	}
-	float elapsedTime = (float) (endTime - startTime) / CLOCKS_PER_SEC;
-	float throughput = (float)(kbits*1000+lastbits) / elapsedTime;
+	fclose(file);
+	double elapsedTime = (double) (endTime.tv_sec - startTime.tv_sec) + (double)(endTime.tv_usec - startTime.tv_usec) / 1000000;
+	double throughput = (double)(kbits*1000+lastbits) / elapsedTime;
+	printf("last bits : %d\n", lastbits);
+	printf("\n");
 	printf("\tFile translate finished\n");
-	printf("\tTransfered bits : %.3f kbit\n", (float)(kbits*1000+lastbits)/1000);
-	printf("\tElapsed time : %.3f\n", elapsedTime);
-	printf("\tThroughput : %f\n", throughput);	
+	printf("\tTransfered bits : %.3f kbit\n", (double)(kbits*1000+lastbits)/1000.0);
+	printf("\tElapsed time : %f seconds\n", elapsedTime);
+	printf("\tThroughput : %f bps\n", throughput);	
+	printf("\n");
 
 }
 int main (int argc, char **argv) {
@@ -206,7 +201,7 @@ int main (int argc, char **argv) {
 					pt += strlen(pt);
 
 					strcpy(pt, fileName[bufIn[i] - '1']);
-					fp = fopen(fileDic, "w");
+					fp = fopen(fileDic, "wb");
 
 					receivingFile(clientSocket, fp, atoi(delay));
 					break;
@@ -216,6 +211,7 @@ int main (int argc, char **argv) {
 			
 		} else if (bufIn[0] == 'F') {
 			send(clientSocket, quitStr, strlen(quitStr), 0);
+			printf("Connection terminated\n");
 			break;
 		} else {
 			printf("\tundefined input : %s\n", bufIn);
@@ -226,17 +222,6 @@ int main (int argc, char **argv) {
 		}
 			
 	}	
-	// Set Handler for timers
-
-	// Timer example
-
-	// TODO: Create a socket for a client
-	//      connect to a server
-	//      set ACK delay
-	//      set server window size
-	//      specify a file to receive
-	//      finish the connection
-
 	// TODO: Receive a packet from server
 	//      set timer for ACK delay
 	//      send ACK packet back to server (usisng handler())
@@ -254,8 +239,9 @@ int main (int argc, char **argv) {
  */
 void handler() {
 	int count = send(clientSocket, ACK, strlen(ACK), 0);
-	acknum ++;
-	printf("acknum is : %d\n", acknum);
+	timer_delete(t_id[acknum]);
+	if (acknum < 999) acknum ++;
+	else acknum = 0;	
 }
 	
 void timeoutHandler(){
@@ -271,7 +257,7 @@ timer_t set_timer(long long time) {
     				.it_value = {.tv_sec=0,.tv_nsec=0}};
 
 	int sec = time / 1000;
-	long n_sec = (time % 1000) * 1000;
+	long n_sec = (time % 1000) * 1000 * 1000;
     time_spec.it_value.tv_sec = sec;
     time_spec.it_value.tv_nsec = n_sec;
 
