@@ -27,20 +27,36 @@ int bindRecursive(int socketId, int portNumber, int numberofTry){
 }
 void sendFile(int socket, FILE *fl, int windowSize) {
 	char buffer[BUFFER_SIZE];
-	char ackbuffer[64];
+	char ackbuffer[10];
 	int diffSN = 0;
-
-	while(fgets(buffer, BUFFER_SIZE, fl) != '\0') {
+	int kbits = 0;
+	int bits = 0;
+	int sending = 0, recieving = 0;
+	while(!feof(fl)) {
+		fgets(buffer, BUFFER_SIZE, fl); 
 		if (diffSN < windowSize){
-			printf("the first character is : %c\n", buffer[0]);
+			sending ++;
 			diffSN ++;
-			send(socket, buffer, sizeof(buffer), 0);	
+			//printf("sending : %d\n", sending);
+			int count = send(socket, buffer, sizeof(buffer), 0);	
+			if (count != BUFFER_SIZE) {
+				printf("giving buffer size is : %d\n", count);
+				bits += count;
+			}
+			else kbits++;
+				
 		} else {
-			int count = recv(socket, ackbuffer, 64, 0);
+			recieving ++;
+			//printf("recieving : %d\n", recieving);
+			int count = recv(socket, ackbuffer, strlen(ACK), MSG_WAITALL);
+			if ( count == -1 ) continue;
 			if ( count > 0 ) ackbuffer[count] = '\0';
-			if ( strncmp(ackbuffer, ACK, strlen(ackbuffer)) == 0 ) diffSN --;
+			if ( strncmp(ackbuffer, ACK, strlen(ACK)) == 0 ) diffSN --;
 		}
 	} 
+	send(socket, transferFinished, strlen(transferFinished), 0);
+	fclose(fl);
+	printf("transfered data : %d kbits, %d bits\n", kbits, bits);
 }
 
 int main (int argc, char **argv) {
@@ -109,7 +125,7 @@ int main (int argc, char **argv) {
 			pt += strlen(pt);
 
 			strcpy(pt, fileName[buf[1] - '1']);
-			fl = fopen(fileDic, "r");
+			fl = fopen(fileDic, "rb");
 
 			printf("file name is : %s\n", fileDic);
 			sendFile(clientSocket, fl, windowSize);		
