@@ -9,7 +9,7 @@ const char identifyQuestion[19] = 	"Are you my server?";
 const char identifyAnswer[14] = 	"Yes my friend";
 
 const char ACK[10] = 			"ACKACKACK";
-const char transferFinished[10] = 	"finished";
+const char transferFinished[10] = 	"FERTICH";
 
 const char quitStr[5] =			"quit";
 
