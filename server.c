@@ -10,9 +10,6 @@
 #include <signal.h>
 #include "constants.h"
 
-void timeoutHandler();
-timer_t set_timer(long long);
-
 int bindRecursive(int socketId, int portNumber, int numberofTry){
 	struct sockaddr_in bindaddr;
 	int state;
@@ -35,21 +32,12 @@ int bindRecursive(int socketId, int portNumber, int numberofTry){
 void sendFile(int socket, FILE *fl, int windowSize) {
 	char ackbuffer[10];
 
-	unsigned long lSize;
 	char * buf;
+	unsigned long lSize;
 	size_t result;
 
+	int diffSN = 0, kbytes = 0, bytes = 0;
 
-	int diffSN = 0, kbits = 0, bits = 0;
-
-	struct sigaction sigact;
-
-        sigact.sa_handler = &timeoutHandler;
-        sigemptyset(&sigact.sa_mask);
-        sigact.sa_flags = 0;
-        sigact.sa_flags |= SA_INTERRUPT;
-
-        sigaction(SIGALRM, &sigact, NULL);
 
 	fseek (fl , 0 , SEEK_END);
 	lSize = ftell (fl);
@@ -64,17 +52,12 @@ void sendFile(int socket, FILE *fl, int windowSize) {
 	if (result != lSize) printf("reading error\n");
 
 	char *bufptr = buf;
-	while(kbits <= result/BUFFER_SIZE) {
+	while(kbytes < result/BUFFER_SIZE) {
 		if(diffSN < windowSize) {
 			diffSN++;
 			int count = send(socket, bufptr, BUFFER_SIZE, 0);
-			if (count != BUFFER_SIZE) {
-				printf("sending error : sending bytes(%d)\n", count);
-				break;
-			} else {
-				bufptr += BUFFER_SIZE;
-				kbits++;
-			}
+			bufptr += BUFFER_SIZE;
+			kbytes++;
 		} else {
 			int count = recv(socket,ackbuffer,strlen(ACK), 0);
 			if (count == -1) continue;
@@ -82,24 +65,18 @@ void sendFile(int socket, FILE *fl, int windowSize) {
 			if (strncmp(ackbuffer, ACK, strlen(ACK)) == 0 ) diffSN --;
 		}
 	}
-	if (kbits == sizeof(buf)/BUFFER_SIZE) {
-		int count = send(socket, bufptr, lSize - kbits*BUFFER_SIZE, 0);
-		bits += count; 
+	if (kbytes == result/BUFFER_SIZE) {
+		int count = send(socket, bufptr, lSize - kbytes*BUFFER_SIZE, 0);
+		bytes += count; 
 	}
-	while(1){
-		timer_t t_id;
-		t_id = set_timer(200);
-		if( send(socket, transferFinished, strlen(transferFinished), 0) == -1 ) {
-			if (errno == EINTR) {
-				printf("interrupted!\n");			
-				break;
-			}
-		}
-		timer_delete(t_id);
-	}
+	usleep(100*1000);
+	send(socket, transferFinished, strlen(transferFinished), 0);
+	usleep(100*1000);
+	send(socket, transferFinished, strlen(transferFinished), 0);
 	fclose(fl);
 	free(buf);
-	printf("transfered data : %d kbits, %d bits\n", kbits, bits);
+	printf("transfered data : %d kbytes, %d bytes\n", kbytes, bytes);
+	printf("\n");
 }
 
 int main (int argc, char **argv) {
@@ -170,6 +147,7 @@ int main (int argc, char **argv) {
 			strcpy(pt, fileName[buf[1] - '1']);
 			fl = fopen(fileDic, "rb");
 
+			printf("\n");
 			printf("file name is : %s\n", fileDic);
 			sendFile(clientSocket, fl, windowSize);		
 		} 
@@ -189,28 +167,4 @@ int main (int argc, char **argv) {
 
 	// TODO: Close the sockets
 	return 0;
-}
-void timeoutHandler(){
-	printf("transfer finished\n");
-}
-/*
- * set_timer()
- * set timer in msec
- */
-timer_t set_timer(long long time) {
-    struct itimerspec time_spec = {.it_interval = {.tv_sec=0,.tv_nsec=0},
-                                .it_value = {.tv_sec=0,.tv_nsec=0}};
-
-        int sec = time / 1000;
-        long n_sec = (time % 1000) * 1000 * 1000;
-    time_spec.it_value.tv_sec = sec;
-    time_spec.it_value.tv_nsec = n_sec;
-
-    timer_t t_id;
-    if (timer_create(CLOCK_MONOTONIC, NULL, &t_id))
-        perror("timer_create");
-    if (timer_settime(t_id, 0, &time_spec, NULL))
-        perror("timer_settime");
-
-    return t_id;
 }
