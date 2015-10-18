@@ -223,23 +223,12 @@ int main (int argc, char **argv) {
 			int sending = 0;
 			for ( i = 1 ; i < strlen(bufIn) ; i ++ ) {
 				if ( bufIn[i] >= '1' && bufIn[i] <= '3' ) {
-					char message[10];
-					message[0] = 'R';
-					message[1] = bufIn[i];
-					message[2] = '\0';
+					char message[50];
+          int j;
+          for (j = 0 ; j < 50 ; j++){
+            message[j] = 1;
+          }
 					sending = send(clientSocket, message, strlen(message), 0);
-
-					char fileDic[30];
-					char *pt = fileDic;
-
-					strcpy(pt, "data/");
-					pt += strlen(pt);
-
-					strcpy(pt, fileName[bufIn[i] - '1']);
-					fp = fopen(fileDic, "w");
-
-					receivingFile(clientSocket, fp, atoi(delay));
-					break;
 				}
 			}
 			if (sending != 2) printf("n can be only 1, 2 or 3\n"); 
@@ -256,24 +245,6 @@ int main (int argc, char **argv) {
 		}
 			
 	}	
-	// Set Handler for timers
-
-	// Timer example
-
-	// TODO: Create a socket for a client
-	//      connect to a server
-	//      set ACK delay
-	//      set server window size
-	//      specify a file to receive
-	//      finish the connection
-
-	// TODO: Receive a packet from server
-	//      set timer for ACK delay
-	//      send ACK packet back to server (usisng handler())
-	//      You may use "ack_packet"
-
-	// TODO: Close the socket
-	close(clientSocket);
 	return 0;
 }
 

@@ -126,46 +126,10 @@ int main (int argc, char **argv) {
 			break;
 		} 
 		buf[count] = '\0';
-		if( strncmp(buf, identifyQuestion, strlen(identifyQuestion) ) == 0) {
-			printf("client is connected\n");
-			send(clientSocket, identifyAnswer, strlen(identifyAnswer), 0);	
-		} else if ( buf[0] == 'C' ) {
-			char *integer = buf + 1;
-			windowSize = atoi(integer);
-		} else if ( strncmp(buf, quitStr, strlen(quitStr)) == 0 ) {
-			printf("Connection terminated\n");
-			break;
-		} else if ( buf[0] == 'R' ) {
-			
-			char fileDic[30];
-			char *pt = fileDic;
-
-			strcpy(pt, "data/");
-			pt += strlen(pt);
-
-			strcpy(pt, fileName[buf[1] - '1']);
-			fl = fopen(fileDic, "r");
-
-			printf("file name is : %s\n", fileDic);
-			sendFile(clientSocket, windowSize);		
-		} 
+    printf("received data is : %s\n", buf);
 	}
 	close(clientSocket);
 	close(serverSocket);
-
-	// TODO: Read a specified file and send it to a client.
-	//      Send as many packets as window size (speified by
-	//      client) allows and assume each packet contains
-	//      1000 Bytes of data.
-	//		When a client receives a packet, it will send back
-	//		ACK packet.
-	//      When a server receives an ACK packet, it will send
-	//      next packet if available.
-
-	// TODO: Print out events during the transmission.
-	//		Refer the assignment PPT for the formats.
-
-	// TODO: Close the sockets
 	return 0;
 }
 
