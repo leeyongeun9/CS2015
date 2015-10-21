@@ -126,6 +126,7 @@ int main (int argc, char **argv) {
 			break;
 		} 
 		buf[count] = '\0';
+    printf("received data : %s\n", buf);
 		if( strncmp(buf, identifyQuestion, strlen(identifyQuestion) ) == 0) {
 			printf("client is connected\n");
 			send(clientSocket, identifyAnswer, strlen(identifyAnswer), 0);	
@@ -137,17 +138,6 @@ int main (int argc, char **argv) {
 			break;
 		} else if ( buf[0] == 'R' ) {
 			
-			char fileDic[30];
-			char *pt = fileDic;
-
-			strcpy(pt, "data/");
-			pt += strlen(pt);
-
-			strcpy(pt, fileName[buf[1] - '1']);
-			fl = fopen(fileDic, "r");
-
-			printf("file name is : %s\n", fileDic);
-			sendFile(clientSocket, windowSize);		
 		} 
 	}
 	close(clientSocket);
