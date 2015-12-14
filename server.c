@@ -126,7 +126,19 @@ int main (int argc, char **argv) {
 			break;
 		} 
 		buf[count] = '\0';
-    printf("received data is : %s\n", buf);
+    printf("received data : %s\n", buf);
+		if( strncmp(buf, identifyQuestion, strlen(identifyQuestion) ) == 0) {
+			printf("client is connected\n");
+			send(clientSocket, identifyAnswer, strlen(identifyAnswer), 0);	
+		} else if ( buf[0] == 'C' ) {
+			char *integer = buf + 1;
+			windowSize = atoi(integer);
+		} else if ( strncmp(buf, quitStr, strlen(quitStr)) == 0 ) {
+			printf("Connection terminated\n");
+			break;
+		} else if ( buf[0] == 'R' ) {
+			
+		} 
 	}
 	close(clientSocket);
 	close(serverSocket);
