@@ -10,162 +10,12 @@
 #include <signal.h>
 #include "constants.h"
 
-void handler();
-void timeoutHandler();
-timer_t set_timer(long long);
-
 int clientSocket;
-ackPacket *ack;
 
-int connectRecursive(int socket, char* hostName, int port, int numberofTry){
+int main (int argc, char **argv) {
 	struct sockaddr_in clientaddr;
 	int socketLen;
-	int state;
-	char buf[255];
 
-	struct sigaction sigact;
-
-	sigact.sa_handler = &timeoutHandler;
-	sigemptyset(&sigact.sa_mask);
-	sigact.sa_flags = 0;
-	sigact.sa_flags |= SA_INTERRUPT;
-
-	sigaction(SIGALRM, &sigact, NULL);
-
-	clientaddr.sin_family = AF_INET;
-	clientaddr.sin_addr.s_addr = inet_addr(hostName);
-	clientaddr.sin_port = htons(port);
-
-	socketLen = sizeof(clientaddr);
-	printf("\n");	
-	printf("------port number : %d------\n", port);
-        printf("\ttrying to connect...\n");
-	
-	state = connect(socket, (struct sockaddr *)&clientaddr, socketLen);
-	if (state == 0) {
-		send(socket,identifyQuestion, strlen(identifyQuestion), 0);
-		alarm(3);
-		int count; 
-		printf("\twaiting for server's response...\n");
-		if( (count = recv(socket, buf, 255, 0)) <= 0 ){
-			if (errno == EINTR) {
-				printf("\tthis is not my server.\n");
-				close(socket);
-				if (numberofTry < CONNECT_TRY_LIMIT) state = connectRecursive(socket, hostName, port+1, numberofTry+1);
-			}
-		}
-		alarm(0);
-		if ( strncmp(buf, identifyAnswer, strlen(identifyAnswer)) == 0 ) {
-			printf("Connection established\n");
-			printf("\n");
-		}
-			
-		
-	} else if (state == -1) {
-		perror("connect error ");
-		if (numberofTry < CONNECT_TRY_LIMIT) state = connectRecursive(socket, hostName, port+1, numberofTry+1);
-	}
-	return state;
-}
-void receivingFile(int socket, FILE *file, int delay){
-	myPacketBuffer *buf;
-	char buffer[BUFFER_SIZE];
-	clock_t startTime, endTime;
-	int rn=0;
-	int isStarted = 0;
-	int kbits = 0;
-	int lastbits = 0;
-	
-	buf = malloc(sizeof(myPacketBuffer));
-	ack = malloc(sizeof(ackPacket));
-
-	ack->length = 9;
-	strncpy(ack->msg, ACK, strlen(ACK));
-	printf("ack->msg is %s\n", ack->msg);
-	printf("myPackeyBuffer size is : %d\n", sizeof(myPacketBuffer));
-	struct sigaction sigact;
-
-	sigemptyset(&sigact.sa_mask);
-	sigaddset(&sigact.sa_mask, SIGALRM);
-	sigact.sa_handler = &handler;
-	//sigact.sa_flags = 0;
- 	//sigact.sa_flags |= SA_INTERRUPT;
-	sigaction(SIGALRM, &sigact, NULL);
-	while (1) {
-	//	printf("ready to recieve\n");
-		int count = recv(socket, buf, sizeof(myPacketBuffer), MSG_WAITALL);
-		printf("buf->rn : %d, buf->length : %d, count is : %d\n", buf->sn, buf->length, count);
-	//	printf("count is : %d\n", count);
-		if (isStarted ==0){
-			startTime = clock();
-			isStarted = 1;
-		}
-
-		if (buf->sn == rn && buf->length + HEADER_SIZE == count) {
-			if (strncmp(buf->pack, transferFinished, strlen(transferFinished)) == 0 ) {
-				usleep(delay * 1000);
-				endTime = clock();
-				break;		
-			}
-			if (buf->length == BUFFER_SIZE) kbits ++;
-			else lastbits += buf->length;
-				
-			fputs(buf->pack, file); 
-			if (kbits % 8000 == 0) printf("%dMB transfered\n", kbits / 8000);
-			rn++;
-			set_timer(delay);
-			
-		}
-		
-//		printf("first is : %c\n", buffer[0]);
-	/*
-		if (isStarted==0){
-			startTime = clock();
-			isStarted = 1;
-		}
-
-		if (count == -1) {
-			if (errno == EINTR) {
-				continue;
-			}
-		} 
-	*/
-		/*if (errno == EINTR) {
-			char *pt = buffer[count];
-			int last = recv(socket, pt, BUFFER_SIZE-count, 0);
-			printf ("count is : %d, last is : %d\n", count, last);
-			count = count + last;
-		}*/
-/*
-		if (count < BUFFER_SIZE) {
-			printf("count is : %d\n", count);
-			printf("errno is : %d\n", errno);
-			buffer[count] = '\0';
-			if (strncmp(buffer, transferFinished, strlen(transferFinished)) == 0) {
-				usleep(delay * 1000);
-				endTime = clock();
-				break;		
-			}
-			lastbits += count;
-		} else kbits ++;
-*/
-	//	if (kbits % 8000 == 0) printf("%dMB transfered\n", kbits / 8000);
-
-	//	fputs(buffer, file);
-	//	set_timer(delay);
-//		printf("set timer\n");
-//		printf("i : %d\n", i);
-	}
-	float elapsedTime = (float) (endTime - startTime) / CLOCKS_PER_SEC;
-	float throughput = (float)(kbits*1000+lastbits) / elapsedTime;
-	printf("\tFile translate finished\n");
-	printf("\tTransfered bits : %.3f kbit\n", (float)(kbits*1000+lastbits)/1000);
-	printf("\tElapsed time : %.3f\n", elapsedTime);
-	printf("\tThroughput : %f\n", throughput);	
-
-}
-int main (int argc, char **argv) {
-   
 	int portNumber, i;
 	char *windowSize, *delay;
 	char *hostName;
@@ -173,6 +23,7 @@ int main (int argc, char **argv) {
 	FILE *fp;
 	
 	clientSocket = socket(AF_INET, SOCK_STREAM, 0);
+
 
 
 	// Check arguments 
@@ -201,13 +52,18 @@ int main (int argc, char **argv) {
 	printf("\tF: Finish the connection to the server\n");
 	printf("\n");
 
+	clientaddr.sin_family = AF_INET;
+	clientaddr.sin_addr.s_addr = inet_addr(hostName);
+	clientaddr.sin_port = htons(portNumber);
+
+	socketLen = sizeof(clientaddr);   
 	while(1){
 		printf("Enter your command : ");
 		memset(bufIn, '0', 16);
 		fgets(bufIn, 16, stdin);
 		bufIn[strlen(bufIn)-1] = '\0';
 		if (bufIn[0] == 'C'){
-			if( connectRecursive(clientSocket, hostName, portNumber, 0) == -1 ) {
+			if( connect(clientSocket, (struct sockaddr *)&clientaddr, socketLen) ) {
 				printf("failed to connect for %d times, shut down\n", CONNECT_TRY_LIMIT);
 				exit(1);
 			}
@@ -223,11 +79,12 @@ int main (int argc, char **argv) {
 			int sending = 0;
 			for ( i = 1 ; i < strlen(bufIn) ; i ++ ) {
 				if ( bufIn[i] >= '1' && bufIn[i] <= '3' ) {
-					char message[50];
-          int j;
-          for (j = 0 ; j < 50 ; j++){
-            message[j] = 1;
-          }
+					char message[20];
+					  int j;
+					  for (j = 0 ; j < 20 ; j++){
+					    message[j] = '1';
+					  }
+					message[19] = '\0';
 					sending = send(clientSocket, message, strlen(message), 0);
 				}
 			}
@@ -246,42 +103,4 @@ int main (int argc, char **argv) {
 			
 	}	
 	return 0;
-}
-
-/*
- * handler()
- * Invoked by a timer.
- * Send ACK to the server
- */
-void handler() {
-	printf("ack sending...\n");
-	ack->rn = ack->rn + 1;
-	int count = send(clientSocket, ack, sizeof(ackPacket), 0);
-	printf("send ack, count : %d, ack rn : %d, ack msg : %s\n", count, ack->rn, ack->msg);
-}
-	
-void timeoutHandler(){
-	printf("timeout\n");
-}
-
-/*
- * set_timer()
- * set timer in msec
- */
-timer_t set_timer(long long time) {
-    struct itimerspec time_spec = {.it_interval = {.tv_sec=0,.tv_nsec=0},
-    				.it_value = {.tv_sec=0,.tv_nsec=0}};
-
-	int sec = time / 1000;
-	long n_sec = (time % 1000) * 1000;
-    time_spec.it_value.tv_sec = sec;
-    time_spec.it_value.tv_nsec = n_sec;
-
-    timer_t t_id;
-    if (timer_create(CLOCK_MONOTONIC, NULL, &t_id))
-        perror("timer_create");
-    if (timer_settime(t_id, 0, &time_spec, NULL))
-        perror("timer_settime");
-
-    return t_id;
 }
